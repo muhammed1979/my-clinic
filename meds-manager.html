@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f2f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0e1424" media="(prefers-color-scheme: dark)">
+  <title>نظام إدارة الأدوية | Meds Manager</title>
+
+  <!-- IBM Plex Sans Arabic covers Arabic + Latin in one family. Falls back to system fonts when offline. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      color-scheme: light dark;
+
+      --bg: #f2f5f7;
+      --surface: #ffffff;
+      --surface-2: #f6f8fa;
+      --text: #14213d;
+      --muted: #5b667a;
+      --border: #dfe5ec;
+      --track: #dde3ea;
+      --item-frame: rgba(20, 26, 46, .5);
+
+      --primary: #2b3a8f;
+      --primary-hover: #202c70;
+      --primary-soft: #e8ebfa;
+      --on-primary: #ffffff;
+
+      --danger: #b91c1c;
+      --danger-soft: #fdeaea;
+      --danger-text: #991b1b;
+      --on-danger: #ffffff;
+
+      --morning: #15803d;  --morning-soft: #e6f5ea;
+      --noon: #0369a1;     --noon-soft: #e3f1fa;
+      --evening: #be185d;  --evening-soft: #fbe7f0;
+      --supp: #92600a;     --supp-soft: #f6ebd6;
+
+      --font: "IBM Plex Sans Arabic", "Segoe UI", "Noto Sans Arabic", Tahoma, system-ui, -apple-system, sans-serif;
+      --shadow: 0 1px 2px rgba(20, 33, 61, .06), 0 6px 20px rgba(20, 33, 61, .05);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0e1424;
+        --surface: #161d33;
+        --surface-2: #1c2440;
+        --text: #e8ecf7;
+        --muted: #9aa5c0;
+        --border: #273152;
+        --track: #2a3454;
+        --item-frame: rgba(210, 218, 245, .38);
+
+        --primary: #9aa8ff;
+        --primary-hover: #b6c0ff;
+        --primary-soft: #232c55;
+        --on-primary: #0e1424;
+
+        --danger: #f87171;
+        --danger-soft: #35181d;
+        --danger-text: #fca5a5;
+        --on-danger: #1a0b0d;
+
+        --morning: #4ade80;  --morning-soft: #12291c;
+        --noon: #38bdf8;     --noon-soft: #0f2533;
+        --evening: #f472b6;  --evening-soft: #2e1526;
+        --supp: #e2b45f;     --supp-soft: #2b2414;
+
+        --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 20px rgba(0, 0, 0, .25);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 1rem;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+
+    .icon { width: 20px; height: 20px; flex: none; }
+    .muted { color: var(--muted); margin: 0; }
+    .small { font-size: .875rem; }
+
+    /* ---------- Layout ---------- */
+    .app {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: max(18px, env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));
+    }
+
+    .app-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      margin-bottom: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      display: grid; place-items: center; flex: none;
+      width: 44px; height: 44px; border-radius: 14px;
+      background: var(--primary); color: var(--on-primary);
+    }
+    .brand h1 { margin: 0; font-size: 1.125rem; font-weight: 700; line-height: 1.3; }
+    .brand .date { margin: 0; font-size: .875rem; color: var(--muted); }
+
+    /* ---------- Navigation: bottom bar on phones, segmented control on wide screens ---------- */
+    .tabs {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+      background: var(--surface); border-top: 1px solid var(--border);
+    }
+    .tab {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 8px 4px; border: 0; border-radius: 12px;
+      background: none; color: var(--muted);
+      font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer;
+      transition: background-color .15s, color .15s;
+    }
+    .tab[aria-current="page"] { background: var(--primary-soft); color: var(--primary); }
+
+    @media (min-width: 640px) {
+      .app { padding-bottom: 56px; }
+      .tabs {
+        position: static; gap: 4px; padding: 4px; margin-bottom: 24px;
+        border: 1px solid var(--border); border-radius: 16px;
+      }
+      .tab { flex-direction: row; justify-content: center; gap: 8px; font-size: .95rem; padding: 10px 12px; }
+    }
+
+    /* ---------- Buttons ---------- */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 44px; padding: 0 18px;
+      border: 1px solid transparent; border-radius: 12px;
+      font: inherit; font-size: .95rem; font-weight: 600; cursor: pointer;
+      transition: background-color .15s, border-color .15s, transform .08s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { background: var(--primary); color: var(--on-primary); }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-danger { background: var(--danger); color: var(--on-danger); }
+    .btn-ghost { background: transparent; border-color: var(--border); color: var(--text); }
+    .btn-ghost:hover { background: var(--surface-2); }
+    .btn-sm { min-height: 38px; padding: 0 12px; font-size: .85rem; }
+    .btn-sm .icon { width: 16px; height: 16px; }
+    .icon-btn { width: 40px; height: 40px; min-height: 0; padding: 0; border-radius: 10px; }
+    .icon-btn.is-danger:hover { background: var(--danger-soft); border-color: var(--danger); color: var(--danger-text); }
+
+    /* ---------- Panels ---------- */
+    .panel-head {
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
+      margin-bottom: 14px;
+    }
+    .panel-head h2 { margin: 0; font-size: 1.35rem; font-weight: 700; line-height: 1.3; }
+
+    /* ---------- Progress: one capsule per scheduled dose ---------- */
+    .progress { margin-bottom: 26px; }
+    .progress-text { margin: 0 0 10px; font-size: .95rem; color: var(--muted); }
+    .capsules { display: flex; gap: 5px; }
+    .capsule {
+      --c: var(--primary);
+      flex: 1 1 0; max-width: 56px; height: 12px; border-radius: 999px;
+      background: var(--track); transition: background-color .25s;
+    }
+    .capsule.is-morning { --c: var(--morning); }
+    .capsule.is-noon { --c: var(--noon); }
+    .capsule.is-evening { --c: var(--evening); }
+    .capsule.is-supp { --c: var(--supp); }
+    .capsule.is-on { background: var(--c); }
+
+    /* ---------- Daily schedule ---------- */
+    .group { margin-bottom: 26px; }
+    .group-morning { --accent: var(--morning); --tint: var(--morning-soft); }
+    .group-noon { --accent: var(--noon); --tint: var(--noon-soft); }
+    .group-evening { --accent: var(--evening); --tint: var(--evening-soft); }
+
+    .group-title {
+      display: flex; align-items: center; gap: 10px;
+      margin: 0 0 10px; padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      font-size: 1rem; font-weight: 700;
+    }
+    .group-icon {
+      display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px;
+      background: var(--tint); color: var(--accent);
+    }
+    .group-count { margin-inline-start: auto; font-size: .8rem; font-weight: 600; color: var(--muted); }
+
+    .dose-list { display: grid; gap: 8px; }
+    .dose {
+      --accent: var(--primary); --tint: var(--surface);
+      display: grid; grid-template-columns: 28px 1fr; align-items: start;
+      column-gap: 14px; row-gap: 6px;
+      padding: 14px 16px;
+      background: var(--tint);
+      border: 1px solid var(--border); border-inline-start: 4px solid var(--accent);
+      border-radius: 12px; cursor: pointer;
+      transition: opacity .2s, background-color .2s;
+    }
+    .dose.is-morning { --accent: var(--morning); --tint: var(--morning-soft); }
+    .dose.is-noon { --accent: var(--noon); --tint: var(--noon-soft); }
+    .dose.is-evening { --accent: var(--evening); --tint: var(--evening-soft); }
+    .dose.is-supp { --accent: var(--supp); --tint: var(--supp-soft); }
+    .dose.is-late { --accent: var(--danger); --tint: var(--danger-soft); }
+    .dose.is-done { opacity: .6; }
+    .dose.is-done .dose-name { text-decoration: line-through; }
+
+    .check {
+      flex: none; display: grid; place-items: center;
+      width: 28px; height: 28px; margin-top: 2px; border-radius: 50%;
+      border: 2px solid var(--accent); color: transparent;
+      transition: background-color .15s, color .15s;
+    }
+    .check .icon { width: 16px; height: 16px; stroke-width: 3; }
+    .dose input:checked + .check { background: var(--accent); color: var(--bg); }
+    .dose input:focus-visible + .check { outline: 2px solid var(--primary); outline-offset: 3px; }
+
+    /* Text always gets the card's full width; long names wrap normally at word breaks. */
+    .dose-body { display: grid; gap: 2px; min-width: 0; }
+    .dose-name { font-weight: 700; overflow-wrap: break-word; }
+    .dose-desc { font-size: .875rem; color: var(--muted); overflow-wrap: break-word; }
+    /* Badges sit on their own row under the text instead of squeezing it sideways. */
+    .dose-tags { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-start; }
+
+    .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 2px 10px; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--border);
+      font-size: .75rem; font-weight: 600; white-space: nowrap;
+    }
+    .tag .icon { width: 12px; height: 12px; }
+    .tag-late, .tag-low { background: var(--danger); border-color: var(--danger); color: var(--on-danger); }
+    .tag-time::before {
+      content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--dot, var(--muted));
+    }
+    .tag-time[data-time="morning"] { --dot: var(--morning); }
+    .tag-time[data-time="noon"] { --dot: var(--noon); }
+    .tag-time[data-time="evening"] { --dot: var(--evening); }
+
+    /* ---------- Forms ---------- */
+    .surface {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 20px; box-shadow: var(--shadow);
+    }
+    .surface + .surface, .surface + .section-head { margin-top: 24px; }
+    .surface h2 { margin: 0 0 16px; font-size: 1.1rem; font-weight: 700; }
+    .surface > .muted { margin-bottom: 16px; }
+
+    .field { display: grid; gap: 6px; margin-bottom: 16px; }
+    .field > label, legend { font-size: .9rem; font-weight: 600; }
+    fieldset { min-width: 0; margin: 0 0 20px; padding: 0; border: 0; }
+    legend { padding: 0; margin-bottom: 8px; }
+
+    input[type="text"], input[type="number"], select {
+      width: 100%; min-height: 48px; padding: 10px 14px;
+      background: var(--surface-2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 10px;
+      font: inherit; font-size: 1rem;
+    }
+    input::placeholder { color: var(--muted); opacity: .8; }
+    input[type="text"]:focus, input[type="number"]:focus, select:focus {
+      outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft);
+    }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { position: relative; cursor: pointer; }
+    .chip-face {
+      display: inline-flex; align-items: center; gap: 8px;
+      min-height: 44px; padding: 0 16px;
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
+      font-size: .9rem; font-weight: 600; user-select: none;
+      transition: background-color .15s, color .15s, border-color .15s;
+    }
+    .chip-face .icon { width: 18px; height: 18px; }
+    .chip input:checked + .chip-face { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+    .chip input:focus-visible + .chip-face { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+    .form-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; align-items: start; }
+    .field-row .field { margin-bottom: 0; }
+    fieldset .field-row { margin-bottom: 0; }
+    fieldset .hint { margin: 8px 0 0; }
+    @media (max-width: 479px) { .field-row.is-stack { grid-template-columns: 1fr; } }
+
+    .amount-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 2px; }
+    .amount-presets-label { font-size: .8rem; font-weight: 600; color: var(--muted); margin-inline-end: 2px; }
+    .amount-preset {
+      min-height: 34px; min-width: 34px; padding: 0 12px;
+      border: 1px solid var(--border); border-radius: 999px;
+      background: var(--surface-2); color: var(--text);
+      font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer;
+      transition: background-color .15s, border-color .15s, color .15s;
+    }
+    .amount-preset:hover { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+
+    /* ---------- Medication list (manage tab) ---------- */
+    .section-head { display: flex; align-items: center; gap: 10px; margin: 28px 0 12px; }
+    .section-head h2 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+    .section-head .btn { margin-inline-start: auto; }
+
+    /* ---------- Printable drug list (used only for the PDF export) ---------- */
+    #print-area { display: none; }
+    @media print {
+      /* Remove the app from layout (not just hide it) so it can't leave blank trailing pages. */
+      .app, .toasts, dialog { display: none !important; }
+      #print-area { display: block; padding: 0; background: #fff; color: #111; }
+      #print-area h1 { margin: 0 0 4px; font-size: 16pt; }
+      #print-area .pdf-date { margin: 0 0 18px; color: #444; font-size: 10pt; }
+      #print-area table { width: 100%; border-collapse: collapse; }
+      #print-area th, #print-area td {
+        border: 1px solid #aaa; padding: 7px 10px; text-align: start;
+        font-size: 10.5pt; vertical-align: top;
+      }
+      #print-area th { background: #eee; }
+      #print-area tr { break-inside: avoid; }
+    }
+    .count {
+      min-width: 24px; padding: 0 8px; border-radius: 999px;
+      background: var(--primary-soft); color: var(--primary);
+      font-size: .8rem; font-weight: 700; text-align: center;
+    }
+    .item-list { display: grid; gap: 8px; }
+    .item {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 14px 16px; background: var(--surface);
+      border: 1.5px solid var(--item-frame); border-radius: 12px;
+    }
+    .item-main { min-width: 0; }
+    .item-title { margin: 0; font-size: 1rem; font-weight: 700; overflow-wrap: anywhere; }
+    .item-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .item-actions { display: flex; gap: 6px; flex: none; }
+
+    /* ---------- Inventory ---------- */
+    .stock-list { display: grid; gap: 10px; }
+    .stock {
+      display: grid; gap: 12px; padding: 16px;
+      background: var(--surface); border: 1.5px solid var(--item-frame); border-radius: 14px;
+    }
+    .stock.is-low { background: var(--danger-soft); border-color: var(--danger); }
+    .stock-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .stock-name { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; font-size: 1rem; font-weight: 700; }
+    .stock-qty { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .stock-qty small { font-size: .85rem; font-weight: 500; color: var(--muted); }
+    .stock.is-low .stock-qty { color: var(--danger-text); }
+    .bar { height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; }
+    .bar > span { display: block; height: 100%; border-radius: inherit; background: var(--primary); transition: width .3s; }
+    .stock.is-low .bar > span { background: var(--danger); }
+    .stock-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+    .stock-input { display: grid; gap: 4px; font-size: .8rem; font-weight: 600; color: var(--muted); }
+    .stock-input input { width: 112px; min-height: 40px; }
+    .stock-actions .btn { margin-inline-start: auto; }
+    .pack-add {
+      padding: 0 8px; border-radius: 999px; font-size: .8rem; font-variant-numeric: tabular-nums;
+      background: color-mix(in srgb, currentColor 20%, transparent);
+    }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn:disabled:active { transform: none; }
+
+    /* ---------- Empty state ---------- */
+    .empty {
+      display: grid; justify-items: center; gap: 8px; text-align: center;
+      padding: 40px 20px; border: 2px dashed var(--border); border-radius: 20px;
+    }
+    .empty-icon {
+      display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
+      background: var(--primary-soft); color: var(--primary); margin-bottom: 4px;
+    }
+    .empty-icon .icon { width: 26px; height: 26px; }
+    .empty-title { margin: 0; font-weight: 700; }
+    .empty .btn { margin-top: 10px; }
+
+    /* ---------- Toasts & dialog ---------- */
+    .toasts {
+      position: fixed; left: 0; right: 0; z-index: 50;
+      bottom: calc(88px + env(safe-area-inset-bottom));
+      display: grid; gap: 8px; justify-items: center; padding: 0 16px; pointer-events: none;
+    }
+    @media (min-width: 640px) { .toasts { bottom: 24px; } }
+    .toast {
+      pointer-events: auto; max-width: 440px; padding: 12px 16px;
+      background: #1b2440; color: #f4f6fb; border: 1px solid rgba(255, 255, 255, .12);
+      border-radius: 12px; box-shadow: 0 8px 28px rgba(0, 0, 0, .3);
+      font-size: .9rem; animation: toast-in .22s ease;
+    }
+    .toast.is-warn { background: #b45309; border-color: transparent; color: #fff; }
+    .toast.is-error { background: #b91c1c; border-color: transparent; color: #fff; }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+
+    dialog {
+      width: min(400px, calc(100vw - 32px)); padding: 22px;
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: 20px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, .35);
+    }
+    dialog::backdrop { background: rgba(10, 15, 30, .55); }
+    .dialog-msg { margin: 0; font-size: 1rem; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" data-icon="pill"></span>
+      <div>
+        <h1 data-i18n="app_title"></h1>
+        <p class="date" id="current-date"></p>
+      </div>
+    </div>
+    <button type="button" class="btn btn-ghost btn-sm" id="lang-btn"></button>
+  </header>
+
+  <nav class="tabs">
+    <button type="button" class="tab" data-tab="daily" aria-current="page">
+      <span data-icon="calendar"></span><span data-i18n="tab_daily"></span>
+    </button>
+    <button type="button" class="tab" data-tab="manage">
+      <span data-icon="pill"></span><span data-i18n="tab_manage"></span>
+    </button>
+    <button type="button" class="tab" data-tab="inventory">
+      <span data-icon="package"></span><span data-i18n="tab_inventory"></span>
+    </button>
+  </nav>
+
+  <main>
+    <!-- Daily schedule -->
+    <section id="panel-daily" class="panel">
+      <div id="summary">
+        <div class="panel-head">
+          <h2 data-i18n="today_meds"></h2>
+          <button type="button" class="btn btn-ghost btn-sm" data-action="reset-day">
+            <span data-icon="refresh"></span><span data-i18n="btn_reset_day"></span>
+          </button>
+        </div>
+        <div class="progress">
+          <p class="progress-text" id="progress-text"></p>
+          <div class="capsules" id="capsules" role="progressbar" aria-labelledby="progress-text"
+               aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+        </div>
+      </div>
+      <div id="daily-container"></div>
+    </section>
+
+    <!-- Manage medications -->
+    <section id="panel-manage" class="panel" hidden>
+      <form id="med-form" class="surface" novalidate>
+        <h2 id="form-title"></h2>
+
+        <div class="field">
+          <label for="med-name" data-i18n="lbl_name"></label>
+          <input type="text" id="med-name" maxlength="120" autocomplete="off" data-i18n-placeholder="ph_name">
+        </div>
+
+        <div class="field-row is-stack">
+          <div class="field">
+            <label for="med-generic" data-i18n="lbl_generic"></label>
+            <input type="text" id="med-generic" maxlength="120" autocomplete="off" data-i18n-placeholder="ph_generic">
+          </div>
+          <div class="field">
+            <label for="med-strength" data-i18n="lbl_strength"></label>
+            <input type="text" id="med-strength" maxlength="60" autocomplete="off" data-i18n-placeholder="ph_strength">
+          </div>
+        </div>
+
+        <fieldset>
+          <legend data-i18n="lbl_dosage_form"></legend>
+          <div class="field-row">
+            <div class="field">
+              <label for="med-dose-amount" data-i18n="lbl_amount"></label>
+              <input type="number" id="med-dose-amount" min="0" step="any" inputmode="decimal" value="1">
+            </div>
+            <div class="field">
+              <label for="med-dose-unit" data-i18n="lbl_unit"></label>
+              <input type="text" id="med-dose-unit" maxlength="30" list="unit-list" autocomplete="off" data-i18n-placeholder="ph_unit">
+            </div>
+          </div>
+          <div class="amount-presets">
+            <span class="amount-presets-label" data-i18n="lbl_quick_pick"></span>
+            <button type="button" class="amount-preset" data-action="preset-amount" data-value="0.25">¼</button>
+            <button type="button" class="amount-preset" data-action="preset-amount" data-value="0.5">½</button>
+            <button type="button" class="amount-preset" data-action="preset-amount" data-value="1">1</button>
+            <button type="button" class="amount-preset" data-action="preset-amount" data-value="2">2</button>
+          </div>
+          <p class="muted small hint" data-i18n="hint_dose_amount"></p>
+        </fieldset>
+
+        <fieldset>
+          <legend data-i18n="lbl_packaging"></legend>
+          <div class="field">
+            <label for="med-pack-qty" data-i18n="lbl_pack_qty"></label>
+            <input type="number" id="med-pack-qty" min="0" step="any" inputmode="decimal">
+          </div>
+          <p class="muted small hint" data-i18n="hint_units"></p>
+        </fieldset>
+
+        <div class="field">
+          <label for="med-manufacturer" data-i18n="lbl_manufacturer"></label>
+          <input type="text" id="med-manufacturer" maxlength="300" autocomplete="off" data-i18n-placeholder="ph_manufacturer">
+        </div>
+
+        <div class="field">
+          <label for="med-directions" data-i18n="lbl_directions"></label>
+          <input type="text" id="med-directions" maxlength="200" autocomplete="off" data-i18n-placeholder="ph_directions">
+        </div>
+
+        <div class="field">
+          <label for="med-type" data-i18n="lbl_type"></label>
+          <select id="med-type">
+            <option value="essential" data-i18n="type_essential"></option>
+            <option value="supplement" data-i18n="type_supplement"></option>
+          </select>
+        </div>
+
+        <datalist id="unit-list"></datalist>
+
+        <fieldset>
+          <legend data-i18n="lbl_times"></legend>
+          <div class="chips">
+            <label class="chip">
+              <input type="checkbox" class="sr-only" name="time" value="morning">
+              <span class="chip-face"><span data-icon="sunrise"></span><span data-i18n="time_morning"></span></span>
+            </label>
+            <label class="chip">
+              <input type="checkbox" class="sr-only" name="time" value="noon">
+              <span class="chip-face"><span data-icon="sun"></span><span data-i18n="time_noon"></span></span>
+            </label>
+            <label class="chip">
+              <input type="checkbox" class="sr-only" name="time" value="evening">
+              <span class="chip-face"><span data-icon="moon"></span><span data-i18n="time_evening"></span></span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary"><span data-icon="check"></span><span data-i18n="btn_save"></span></button>
+          <button type="button" class="btn btn-ghost" id="btn-cancel-edit" data-action="cancel-edit" data-i18n="btn_cancel" hidden></button>
+        </div>
+      </form>
+
+      <div class="section-head" id="list-head" hidden>
+        <h2 data-i18n="list_title"></h2>
+        <span class="count" id="manage-count"></span>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="export-pdf">
+          <span data-icon="file-text"></span><span data-i18n="btn_export_pdf"></span>
+        </button>
+      </div>
+      <div id="manage-list" class="item-list"></div>
+
+      <div class="surface">
+        <h2 data-i18n="backup_title"></h2>
+        <p class="muted small" data-i18n="backup_desc"></p>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-action="export"><span data-icon="download"></span><span data-i18n="btn_export"></span></button>
+          <button type="button" class="btn btn-ghost" data-action="import"><span data-icon="upload"></span><span data-i18n="btn_import"></span></button>
+        </div>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+      </div>
+    </section>
+
+    <!-- Inventory -->
+    <section id="panel-inventory" class="panel" hidden>
+      <div class="panel-head">
+        <h2 data-i18n="inventory_title"></h2>
+        <button type="button" class="btn btn-ghost btn-sm" id="notif-btn" data-action="notif" hidden>
+          <span data-icon="bell"></span><span data-i18n="btn_notif"></span>
+        </button>
+      </div>
+      <p class="muted small" style="margin-bottom:16px" data-i18n="inventory_desc"></p>
+      <div id="inventory-list" class="stock-list"></div>
+    </section>
+  </main>
+</div>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<dialog id="confirm-dialog" aria-labelledby="confirm-msg">
+  <form method="dialog">
+    <p class="dialog-msg" id="confirm-msg"></p>
+    <div class="dialog-actions">
+      <button type="submit" value="cancel" class="btn btn-ghost" data-i18n="btn_cancel"></button>
+      <button type="submit" value="ok" class="btn btn-primary" id="confirm-ok"></button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Populated just before printing, from exportDrugListPdf(); see the print stylesheet above. -->
+<div id="print-area">
+  <h1 id="pdf-title"></h1>
+  <p class="pdf-date" id="pdf-date"></p>
+  <table>
+    <thead id="pdf-table-head"></thead>
+    <tbody id="pdf-table-body"></tbody>
+  </table>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ============================================================
+     Constants & translations
+     ============================================================ */
+  const TIMES = ['morning', 'noon', 'evening'];
+  const LOW_RATIO = 0.25;
+  const KEYS = {
+    meds: 'app_meds',
+    daily: 'app_daily_v2',        // { date, done }  (auto-resets each new day)
+    legacyDaily: 'app_daily',     // old flat log, migrated once
+    notified: 'app_notified',
+    lang: 'app_lang'
+  };
+
+  const I18N = {
+    ar: {
+      app_title: 'نظام إدارة الأدوية',
+      tab_daily: 'الجدول اليومي', tab_manage: 'إدارة الأدوية', tab_inventory: 'المخزون',
+      today_meds: 'أدوية اليوم',
+      progress: 'تم تناول {done} من {total} جرعة',
+      all_done: 'أحسنت! أكملت جميع جرعات اليوم',
+      btn_reset_day: 'تجديد لليوم التالي',
+      add_title: 'تسجيل دواء جديد', edit_title: 'تعديل الدواء',
+      lbl_name: 'الاسم التجاري', lbl_generic: 'الاسم العلمي / المادة الفعالة', lbl_strength: 'التركيز / القوة',
+      lbl_dosage_form: 'الشكل الصيدلاني (الجرعة الواحدة)', lbl_amount: 'الكمية', lbl_unit: 'الوحدة',
+      lbl_packaging: 'التعبئة', lbl_pack_qty: 'كمية العبوة',
+      lbl_manufacturer: 'التفاصيل التجارية / التصنيعية', lbl_directions: 'تعليمات الاستخدام (اختياري)',
+      lbl_type: 'تصنيف الدواء',
+      ph_name: 'مثال: بنادول', ph_generic: 'مثال: باراسيتامول', ph_strength: 'مثال: 500 ملغ',
+      ph_unit: 'مثال: قرص', ph_manufacturer: 'مثال: الشركة المصنّعة، بلد المنشأ، رقم التشغيلة', ph_directions: 'مثال: بعد الأكل',
+      hint_dose_amount: 'تقبل هذه الخانة كسوراً عشرية، مثل 0.5 لنصف قرص أو 1.5 لقرص ونصف.',
+      lbl_quick_pick: 'اختيار سريع:',
+      hint_units: 'تُستخدم وحدة الشكل الصيدلاني نفسها (أعلاه) لحساب العبوة، مثل عبوة من 30 قرصاً.',
+      type_essential: 'أساسي (علاج)', type_supplement: 'مقويات / فيتامينات',
+      lbl_times: 'أوقات التناول (يمكن اختيار أكثر من وقت)',
+      time_morning: 'صباحاً', time_noon: 'ظهراً', time_evening: 'مساءً',
+      btn_save: 'حفظ الدواء', btn_cancel: 'إلغاء', btn_confirm: 'تأكيد',
+      btn_edit: 'تعديل', btn_delete: 'حذف', btn_add_pack: 'إضافة عبوة', btn_add_first: 'إضافة أول دواء',
+      list_title: 'الأدوية المسجلة', dose_label: 'الجرعة',
+      btn_export_pdf: 'تصدير PDF', pdf_list_title: 'قائمة الأدوية المسجلة', pdf_col_frequency: 'الجرعة (الكمية×التكرار)',
+      inventory_title: 'متابعة المخزون',
+      inventory_desc: 'كمية كل عبوة تأتي من «كمية العبوة» في تسجيل الدواء. عند تسجيل كل جرعة يُخصم من المتبقي كمية الشكل الصيدلاني، وعند اكتمال اليوم يكون الخصم = عدد المرات × كمية الشكل الصيدلاني. عند وصول المتبقي إلى ربع عبوة أو أقل يظهر تنبيه وتتلوّن البطاقة بالأحمر.',
+      col_remaining: 'المتبقي',
+      pack_info: 'العبوة: {qty} {unit}',
+      daily_use: 'الاستهلاك اليومي: {freq} × {amt} = {total} {unit}',
+      days_left: 'يكفي ≈ {n} يوم',
+      stock_unset: 'أضف «كمية العبوة» في تسجيل الدواء لتفعيل إضافة العبوات وتنبيه النفاذ.',
+      tag_late: 'متأخر', tag_low: 'منخفض', btn_notif: 'تفعيل الإشعارات',
+      msg_empty: 'لا توجد أدوية مضافة بعد', empty_hint: 'سجّل أدويتك لتظهر هنا في جدول اليوم وفي المخزون.',
+      alert_delete: 'هل أنت متأكد من حذف «{name}»؟',
+      alert_reset: 'بدء يوم جديد؟ سيتم تصفير علامات الصح.',
+      confirm_import: 'سيتم استبدال الأدوية الحالية بـ {count} دواء من الملف. هل تريد المتابعة؟',
+      err_required: 'أدخل الاسم التجاري وكمية الجرعة (أكبر من صفر) واختر وقتاً واحداً على الأقل',
+      toast_saved: 'تم حفظ الدواء', toast_deleted: 'تم حذف الدواء', toast_reset: 'بدأ يوم جديد',
+      toast_pack_added: 'أُضيفت عبوة (+{qty})', toast_exported: 'تم تصدير النسخة الاحتياطية',
+      toast_imported: 'تم استيراد {count} دواء', toast_import_error: 'ملف غير صالح. اختر نسخة احتياطية تم تصديرها من هذا التطبيق.',
+      toast_storage_error: 'تعذّر حفظ البيانات على هذا المتصفح. قد تفقد التغييرات عند الإغلاق.',
+      notif_title: 'تنبيه: نفاذ دواء', notif_body: 'دواء «{name}» قارب على النفاذ (المتبقي: {qty}). يرجى شراء المزيد.',
+      backup_title: 'النسخ الاحتياطي',
+      backup_desc: 'بياناتك محفوظة على هذا الجهاز فقط. صدّر نسخة احتياطية لحمايتها أو لنقلها إلى جهاز آخر.',
+      btn_export: 'تصدير', btn_import: 'استيراد',
+    },
+    en: {
+      app_title: 'Meds Manager',
+      tab_daily: 'Daily Schedule', tab_manage: 'Manage Meds', tab_inventory: 'Inventory',
+      today_meds: "Today's medications",
+      progress: '{done} of {total} doses taken',
+      all_done: 'All doses taken today. Well done!',
+      btn_reset_day: 'Reset for next day',
+      add_title: 'Register a medication', edit_title: 'Edit medication',
+      lbl_name: 'Trade / brand name', lbl_generic: 'Generic / active substance', lbl_strength: 'Strength / concentration',
+      lbl_dosage_form: 'Dosage form (per dose)', lbl_amount: 'Amount', lbl_unit: 'Unit',
+      lbl_packaging: 'Packaging', lbl_pack_qty: 'Package quantity',
+      lbl_manufacturer: 'Commercial / manufacturing details', lbl_directions: 'Directions (optional)',
+      lbl_type: 'Type',
+      ph_name: 'e.g. Panadol', ph_generic: 'e.g. Paracetamol', ph_strength: 'e.g. 500 mg',
+      ph_unit: 'e.g. tablet', ph_manufacturer: 'e.g. Manufacturer, country of origin, batch number', ph_directions: 'e.g. after meals',
+      hint_dose_amount: 'This field accepts decimals, like 0.5 for half a tablet or 1.5 for a tablet and a half.',
+      lbl_quick_pick: 'Quick pick:',
+      hint_units: 'Packaging uses the same unit as the dosage form above, e.g. a pack of 30 tablets.',
+      type_essential: 'Essential (treatment)', type_supplement: 'Supplement / vitamins',
+      lbl_times: 'Times (select one or more)',
+      time_morning: 'Morning', time_noon: 'Noon', time_evening: 'Evening',
+      btn_save: 'Save medication', btn_cancel: 'Cancel', btn_confirm: 'Confirm',
+      btn_edit: 'Edit', btn_delete: 'Delete', btn_add_pack: 'Add pack', btn_add_first: 'Add your first medication',
+      list_title: 'Registered medications', dose_label: 'Dose',
+      btn_export_pdf: 'Export PDF', pdf_list_title: 'Registered Medications List', pdf_col_frequency: 'Frequency (amount×times)',
+      inventory_title: 'Stock inventory',
+      inventory_desc: 'Each pack adds the “Package quantity” from the drug registration. Every logged dose deducts the dosage form quantity from the remaining stock, so a full day deducts frequency × dosage form quantity. When the remaining stock drops to a quarter of a pack or less, the card turns red and you get an alert.',
+      col_remaining: 'Remaining',
+      pack_info: 'Pack: {qty} {unit}',
+      daily_use: 'Daily use: {freq} × {amt} = {total} {unit}',
+      days_left: 'lasts ≈ {n} days',
+      stock_unset: 'Add the “Package quantity” in the drug registration to enable packs and low-stock alerts.',
+      tag_late: 'Late', tag_low: 'Low', btn_notif: 'Enable notifications',
+      msg_empty: 'No medications yet', empty_hint: 'Register your medications to see them in today’s schedule and in the inventory.',
+      alert_delete: 'Delete “{name}”?',
+      alert_reset: 'Start a new day? All checkmarks will be cleared.',
+      confirm_import: 'This replaces your current medications with {count} from the file. Continue?',
+      err_required: 'Enter the brand name, a dose amount above zero, and at least one time.',
+      toast_saved: 'Medication saved', toast_deleted: 'Medication deleted', toast_reset: 'New day started',
+      toast_pack_added: 'Pack added (+{qty})', toast_exported: 'Backup exported',
+      toast_imported: 'Imported {count} medications', toast_import_error: 'Invalid file. Choose a backup exported from this app.',
+      toast_storage_error: 'Could not save data in this browser. Changes may be lost when you close it.',
+      notif_title: 'Low stock alert', notif_body: '“{name}” is running low (remaining: {qty}). Please refill.',
+      backup_title: 'Backup',
+      backup_desc: 'Your data is stored on this device only. Export a backup to protect it or move it to another device.',
+      btn_export: 'Export', btn_import: 'Import',
+    }
+  };
+
+  const UNITS = {
+    ar: ['قرص', 'كبسولة', 'مل', 'قطرة', 'وحدة', 'بخة', 'كيس', 'أمبولة', 'زجاجة', 'علبة', 'شريط'],
+    en: ['tablet', 'capsule', 'ml', 'drops', 'units', 'puff', 'sachet', 'ampoule', 'bottle', 'box', 'strip']
+  };
+
+  /* Lucide-style stroke icons */
+  const ICONS = {
+    pill: '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/>',
+    calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/>',
+    package: '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+    sunrise: '<path d="M12 2v6"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+    moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+    plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+    edit: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+    trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+    'file-text': '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+    mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+    refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+    download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+    upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+    alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>'
+  };
+  const TIME_ICON = { morning: 'sunrise', noon: 'sun', evening: 'moon' };
+
+  const icon = name =>
+    `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ` +
+    `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+
+  // Square icon for system notifications (a plain currentColor icon doesn't work outside the page).
+  const NOTIF_ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">` +
+    `<rect width="24" height="24" rx="6" fill="#2b3a8f"/>` +
+    `<g fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS.pill}</g></svg>`);
+
+  /* ============================================================
+     Helpers
+     ============================================================ */
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+  const esc = s => String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const store = {
+    get(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw === null ? fallback : JSON.parse(raw);
+      } catch { return fallback; }
+    },
+    set(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+      catch { return false; }
+    }
+  };
+
+  const r3 = v => Math.round(v * 1000) / 1000;
+  /** Non-negative number, up to 3 decimals (so 0.5 tablet or 2.5 ml work). */
+  const qtyOf = v => { const n = parseFloat(v); return Number.isFinite(n) && n > 0 ? r3(Math.min(n, 1e6)) : 0; };
+  const fmt = n => String(r3(n));
+  const pad = n => String(n).padStart(2, '0');
+  const todayKey = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+
+  let lastId = 0;
+  const nextId = () => (lastId = Math.max(Date.now(), lastId + 1));
+
+  /* ============================================================
+     State
+     ============================================================ */
+  let lang = store.get(KEYS.lang, 'ar');
+  if (!I18N[lang]) lang = 'ar';
+
+  const t = (key, vars = {}) =>
+    String(I18N[lang][key] ?? key).replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
+
+  function sanitizeMed(m, usedIds) {
+    if (!m || typeof m !== 'object') return null;
+    const name = String(m.name ?? '').trim().slice(0, 120);
+    const times = TIMES.filter(x => Array.isArray(m.times) && m.times.includes(x));
+    if (!name || !times.length) return null;
+
+    let id = Number(m.id);
+    if (!Number.isFinite(id) || usedIds.has(id)) id = nextId();
+    usedIds.add(id);
+
+    const text = (v, max) => String(v ?? '').trim().slice(0, max);
+    // Older versions stored packSize (v3) or totalQty/consumedQty (v1); convert them.
+    const packQty = m.packQty !== undefined ? qtyOf(m.packQty)
+                  : m.packSize !== undefined ? qtyOf(m.packSize)
+                  : qtyOf(m.totalQty);
+    const stock = m.stock !== undefined ? qtyOf(m.stock)
+                : Math.max(0, r3(qtyOf(m.totalQty) - qtyOf(m.consumedQty)));
+
+    return {
+      id, name, times,
+      generic: text(m.generic, 120),
+      strength: text(m.strength, 60),
+      doseAmount: qtyOf(m.doseAmount) || 1,   // amount per dose; older drugs deducted 1 per dose
+      doseUnit: text(m.doseUnit, 30),
+      packQty,
+      manufacturer: text(m.manufacturer, 300),
+      directions: text(m.directions ?? m.dose, 200),
+      type: m.type === 'supplement' ? 'supplement' : 'essential',
+      stock
+    };
+  }
+
+  const sanitizeList = list => {
+    const used = new Set();
+    return list.map(m => sanitizeMed(m, used)).filter(Boolean);
+  };
+
+  function loadDaily() {
+    const saved = store.get(KEYS.daily, null);
+    if (saved && typeof saved.date === 'string' && saved.done && typeof saved.done === 'object') {
+      // Logs saved before pack tracking have no "deducted" map: everything checked was already deducted
+      if (!saved.deducted || typeof saved.deducted !== 'object') saved.deducted = { ...saved.done };
+      return saved;
+    }
+
+    // One-time migration from the old flat log
+    const legacy = store.get(KEYS.legacyDaily, null);
+    const done = {};
+    if (legacy && typeof legacy === 'object') {
+      Object.keys(legacy).forEach(k => { if (legacy[k] === true) done[k] = true; });
+    }
+    return { date: todayKey(), done, deducted: { ...done } };
+  }
+
+  const rawMeds = store.get(KEYS.meds, []);
+  let medications = Array.isArray(rawMeds) ? sanitizeList(rawMeds) : [];
+  let notified = store.get(KEYS.notified, {});
+  if (!notified || typeof notified !== 'object' || Array.isArray(notified)) notified = {};
+  let dailyState = loadDaily();
+
+  let editingId = null;
+  let lastDailyHtml = '';
+  let storageWarned = false;
+
+  const findMed = id => medications.find(m => String(m.id) === String(id));
+  const remainingOf = m => m.stock;
+  /** Low = a quarter of a pack (or less) is left. Needs a package quantity to mean anything. */
+  const isLow = m => m.packQty > 0 && m.stock <= m.packQty * LOW_RATIO;
+  const frequencyOf = m => m.times.length;
+  /** Daily use = frequency (doses per day) x dosage form quantity. */
+  const dailyUseOf = m => r3(frequencyOf(m) * m.doseAmount);
+  /** Amount deducted for a logged dose (older logs stored `true`, meaning 1). */
+  const deductedAmount = v => (v === true ? 1 : qtyOf(v));
+  const isDone = (id, time) => dailyState.done[`${id}_${time}`] === true;
+  const dosesAt = time => medications
+    .filter(m => m.times.includes(time))
+    .sort((a, b) => (a.type === 'supplement') - (b.type === 'supplement')); // treatments first, supplements last
+
+  function persist() {
+    const ok = store.set(KEYS.meds, medications) &&
+               store.set(KEYS.daily, dailyState) &&
+               store.set(KEYS.notified, notified);
+    if (!ok && !storageWarned) {
+      storageWarned = true;
+      toast(t('toast_storage_error'), 'error', 6000);
+    }
+  }
+
+  /** Starts a fresh log when the calendar day changes. Returns true if it reset. */
+  function ensureToday() {
+    const key = todayKey();
+    if (dailyState.date === key) return false;
+    dailyState = { date: key, done: {}, deducted: {} };
+    store.set(KEYS.daily, dailyState);
+    return true;
+  }
+
+  /* ============================================================
+     UI primitives: toast, confirm dialog
+     ============================================================ */
+  function toast(message, kind = 'info', ms = 3500) {
+    const el = document.createElement('div');
+    el.className = `toast is-${kind}`;
+    el.textContent = message;
+    $('#toasts').appendChild(el);
+    setTimeout(() => el.remove(), ms);
+  }
+
+  function confirmDialog(message, { danger = false, okLabel } = {}) {
+    const dlg = $('#confirm-dialog');
+    if (typeof dlg.showModal !== 'function') return Promise.resolve(window.confirm(message));
+    $('#confirm-msg').textContent = message;
+    const ok = $('#confirm-ok');
+    ok.className = `btn ${danger ? 'btn-danger' : 'btn-primary'}`;
+    ok.textContent = okLabel || t('btn_confirm');
+    dlg.returnValue = '';
+    return new Promise(resolve => {
+      dlg.addEventListener('close', () => resolve(dlg.returnValue === 'ok'), { once: true });
+      dlg.showModal();
+    });
+  }
+
+  /* ============================================================
+     Phone-panel notifications
+     Android Chrome (and some other mobile browsers) refuse `new Notification()`
+     outright and require a Service Worker's `showNotification()` instead, which
+     is what actually posts to the phone's notification shade. We register a
+     tiny one from an in-memory Blob (no extra file needed) and fall back to the
+     plain constructor — which still works on desktop browsers — if that fails.
+     A Service Worker needs a secure origin (https, or http://localhost); it
+     cannot register at all when this file is opened directly as file://, so on
+     that setup only the in-app toast above is available.
+     ============================================================ */
+  const SW_SOURCE = `self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    const existing = list.find(c => 'focus' in c);
+    if (existing) return existing.focus();
+    if (clients.openWindow) return clients.openWindow('./');
+  }));
+});
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));`;
+
+  let swRegistration = null;
+  async function ensureServiceWorker() {
+    if (swRegistration) return swRegistration;
+    if (!('serviceWorker' in navigator)) return null;
+    try {
+      const url = URL.createObjectURL(new Blob([SW_SOURCE], { type: 'text/javascript' }));
+      await navigator.serviceWorker.register(url, { scope: './' });
+      swRegistration = await navigator.serviceWorker.ready;
+      return swRegistration;
+    } catch {
+      return null; // insecure origin (file://), unsupported browser, or blocked registration
+    }
+  }
+
+  /* ============================================================
+     Low-stock logic (runs on data changes, never inside render)
+     ============================================================ */
+  async function notifyLow(med) {
+    const body = t('notif_body', { name: med.name, qty: remainingOf(med) });
+    toast(body, 'warn', 7000);
+
+    // If this page is running inside the companion Android wrapper, it exposes a native
+    // bridge here (see the meds-manager-android project). That path works fully offline —
+    // no https, no Service Worker — so it's tried first and, when present, is the only path.
+    const nativeBridge = window.AndroidNotify;
+    if (nativeBridge && typeof nativeBridge.postNotification === 'function') {
+      try { nativeBridge.postNotification(t('notif_title'), body, `low-stock-${med.id}`); return; }
+      catch { /* fall through to the web APIs below */ }
+    }
+
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    const opts = {
+      body, tag: `low-stock-${med.id}`, renotify: true,
+      lang, dir: lang === 'ar' ? 'rtl' : 'ltr',
+      icon: NOTIF_ICON, badge: NOTIF_ICON
+    };
+    try {
+      const reg = await ensureServiceWorker();
+      if (reg) { await reg.showNotification(t('notif_title'), opts); return; }
+    } catch { /* fall through to the plain constructor below */ }
+    try { new Notification(t('notif_title'), opts); }
+    catch { /* no Service Worker available on this browser; the in-app alert above already showed */ }
+  }
+
+  function evaluateStock() {
+    let changed = false;
+    medications.forEach(m => {
+      const low = isLow(m);
+      if (low && !notified[m.id]) { notified[m.id] = true; changed = true; notifyLow(m); }
+      else if (!low && notified[m.id]) { delete notified[m.id]; changed = true; }
+    });
+    Object.keys(notified).forEach(k => {
+      if (!medications.some(m => String(m.id) === k)) { delete notified[k]; changed = true; }
+    });
+    if (changed) store.set(KEYS.notified, notified);
+  }
+
+  function updateNotifButton() {
+    // Inside the Android wrapper, notification permission is requested natively at launch —
+    // there's no separate web permission to grant, so the in-page button stays hidden.
+    if (window.AndroidNotify) { $('#notif-btn').hidden = true; return; }
+    const supported = 'Notification' in window;
+    $('#notif-btn').hidden = !(supported && Notification.permission === 'default');
+  }
+
+  /* ============================================================
+     Rendering
+     ============================================================ */
+  function checkIsLate(time) {
+    const h = new Date().getHours();
+    return (time === 'morning' && h >= 12) || (time === 'noon' && h >= 16) || (time === 'evening' && h >= 23);
+  }
+
+  function emptyState() {
+    return `<div class="empty">
+      <div class="empty-icon">${icon('pill')}</div>
+      <p class="empty-title">${t('msg_empty')}</p>
+      <p class="muted small">${t('empty_hint')}</p>
+      <button type="button" class="btn btn-primary" data-action="goto-manage">${icon('plus')}${t('btn_add_first')}</button>
+    </div>`;
+  }
+
+  function updateProgress() {
+    const capsules = [];
+    let done = 0;
+    TIMES.forEach(time => dosesAt(time).forEach(m => {
+      const on = isDone(m.id, time);
+      if (on) done++;
+      capsules.push(`<span class="capsule is-${m.type === 'supplement' ? 'supp' : time}${on ? ' is-on' : ''}"></span>`);
+    }));
+    const total = capsules.length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+
+    $('#summary').hidden = total === 0;
+    $('#capsules').innerHTML = capsules.join('');
+    $('#capsules').setAttribute('aria-valuenow', pct);
+    $('#progress-text').textContent = total && done === total ? t('all_done') : t('progress', { done, total });
+  }
+
+  /** Secondary lines under a drug name: generic + strength, then dose per intake and directions. */
+  function medLines(med) {
+    const ident = [med.generic, med.strength].filter(Boolean).join(' · ');
+    const dose = [`${fmt(med.doseAmount)} ${med.doseUnit}`.trim(), med.directions].filter(Boolean).join(' · ');
+    return (ident ? `<span class="dose-desc">${esc(ident)}</span>` : '') +
+           `<span class="dose-desc">${t('dose_label')}: ${esc(dose)}</span>`;
+  }
+
+  function renderDaily() {
+    ensureToday();
+    const container = $('#daily-container');
+
+    let html = '';
+    if (!medications.length) {
+      html = emptyState();
+    } else {
+      TIMES.forEach(time => {
+        const list = dosesAt(time);
+        if (!list.length) return;
+        const late = checkIsLate(time);
+        const doneCount = list.filter(m => isDone(m.id, time)).length;
+
+        html += `<section class="group group-${time}">
+          <h3 class="group-title">
+            <span class="group-icon">${icon(TIME_ICON[time])}</span>${t('time_' + time)}
+            <span class="group-count">${doneCount}/${list.length}</span>
+          </h3>
+          <div class="dose-list">`;
+
+        list.forEach(med => {
+          const done = isDone(med.id, time);
+          const isLate = !done && late;
+          const cls = ['dose', med.type === 'supplement' ? 'is-supp' : `is-${time}`,
+                       done ? 'is-done' : '', isLate ? 'is-late' : ''].filter(Boolean).join(' ');
+          const tags = (med.type === 'supplement' ? `<span class="tag">${t('type_supplement')}</span>` : '') +
+                       (isLate ? `<span class="tag tag-late">${t('tag_late')}</span>` : '');
+
+          html += `<label class="${cls}">
+            <input type="checkbox" class="sr-only" data-action="toggle" data-id="${med.id}" data-time="${time}" ${done ? 'checked' : ''}>
+            <span class="check">${icon('check')}</span>
+            <span class="dose-body">
+              <span class="dose-name">${esc(med.name)}</span>
+              ${medLines(med)}
+            </span>
+            ${tags ? `<span class="dose-tags">${tags}</span>` : ''}
+          </label>`;
+        });
+        html += '</div></section>';
+      });
+    }
+
+    if (html !== lastDailyHtml) { container.innerHTML = html; lastDailyHtml = html; }
+    updateProgress();
+  }
+
+  function renderManage() {
+    $('#list-head').hidden = medications.length === 0;
+    $('#manage-count').textContent = medications.length;
+
+    $('#manage-list').innerHTML = medications.map(med => {
+      const times = med.times.map(x => `<span class="tag tag-time" data-time="${x}">${t('time_' + x)}</span>`).join('');
+      const type = `<span class="tag">${med.type === 'supplement' ? t('type_supplement') : t('type_essential')}</span>`;
+      const dose = `<span class="tag">${t('dose_label')}: ${esc(`${fmt(med.doseAmount)} ${med.doseUnit}`.trim())}</span>`;
+      const pack = med.packQty ? `<span class="tag">${icon('package')}${esc(`${fmt(med.packQty)} ${med.doseUnit}`.trim())}</span>` : '';
+      const ident = [med.generic, med.strength].filter(Boolean).join(' · ');
+
+      return `<article class="item">
+        <div class="item-main">
+          <h3 class="item-title">${esc(med.name)}</h3>
+          ${ident ? `<p class="muted small">${esc(ident)}</p>` : ''}
+          ${med.manufacturer ? `<p class="muted small">${esc(med.manufacturer)}</p>` : ''}
+          ${med.directions ? `<p class="muted small">${esc(med.directions)}</p>` : ''}
+          <div class="item-meta">${times}${type}${dose}${pack}</div>
+        </div>
+        <div class="item-actions">
+          <button type="button" class="btn btn-ghost icon-btn" data-action="edit" data-id="${med.id}"
+                  aria-label="${t('btn_edit')}" title="${t('btn_edit')}">${icon('edit')}</button>
+          <button type="button" class="btn btn-ghost icon-btn is-danger" data-action="delete" data-id="${med.id}"
+                  aria-label="${t('btn_delete')}" title="${t('btn_delete')}">${icon('trash')}</button>
+        </div>
+      </article>`;
+    }).join('');
+  }
+
+  function renderInventory() {
+    updateNotifButton();
+    const list = $('#inventory-list');
+    if (!medications.length) { list.innerHTML = emptyState(); return; }
+
+    list.innerHTML = medications.map(med => {
+      const { packQty, stock } = med;
+      const low = isLow(med);
+      const pct = packQty ? Math.min(100, Math.round((stock / packQty) * 100)) : 0;
+      const daily = dailyUseOf(med);
+      const usage = t('daily_use', { freq: frequencyOf(med), amt: fmt(med.doseAmount), total: fmt(daily), unit: med.doseUnit }).trim() +
+                    (stock > 0 ? ` · ${t('days_left', { n: Math.floor(stock / daily) })}` : '');
+
+      return `<article class="stock${low ? ' is-low' : ''}">
+        <div class="stock-head">
+          <h3 class="stock-name">${esc(med.name)}${low ? `<span class="tag tag-low">${icon('alert')}${t('tag_low')}</span>` : ''}</h3>
+          <div class="stock-qty">${fmt(stock)}<small> ${esc(med.doseUnit)}</small></div>
+        </div>
+        <div class="bar" aria-hidden="true"><span style="width:${pct}%"></span></div>
+        <div>
+          <p class="muted small">${packQty ? esc(t('pack_info', { qty: fmt(packQty), unit: med.doseUnit }).trim()) : t('stock_unset')}</p>
+          <p class="muted small">${esc(usage)}</p>
+        </div>
+        <div class="stock-actions">
+          <label class="stock-input"><span>${t('col_remaining')}</span>
+            <input type="number" inputmode="decimal" min="0" step="any" value="${stock}" data-action="stock" data-id="${med.id}">
+          </label>
+          ${packQty
+            ? `<button type="button" class="btn btn-primary btn-sm" data-action="add-pack" data-id="${med.id}">${icon('plus')}${t('btn_add_pack')}<span class="pack-add" dir="ltr">+${fmt(packQty)}</span></button>`
+            : `<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="${med.id}">${icon('edit')}${t('btn_edit')}</button>`}
+        </div>
+      </article>`;
+    }).join('');
+  }
+
+  function renderAll() { renderDaily(); renderManage(); renderInventory(); }
+
+  /* ============================================================
+     Language & date
+     ============================================================ */
+  /* ============================================================
+     Home-screen icon (Add to Home Screen)
+     Built entirely on-device from a canvas — no image file needed — so a
+     manifest + icon exist even for a plain local file. Re-run when the
+     language changes so the short label matches. Every step is wrapped so a
+     browser without canvas/Path2D just keeps the page working, silently.
+     ============================================================ */
+  const PILL_GLYPH = [
+    'm10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z',
+    'm8.5 8.5 7 7'
+  ];
+
+  function pillIconPng(size) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    const r = size * 0.22;
+    ctx.fillStyle = '#2b3a8f';
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.arcTo(size, 0, size, size, r);
+    ctx.arcTo(size, size, 0, size, r);
+    ctx.arcTo(0, size, 0, 0, r);
+    ctx.arcTo(0, 0, size, 0, r);
+    ctx.closePath();
+    ctx.fill();
+
+    const inset = size * 0.26; // keeps the glyph inside Android's adaptive-icon safe zone
+    ctx.save();
+    ctx.translate(inset, inset);
+    ctx.scale((size - inset * 2) / 24, (size - inset * 2) / 24);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    PILL_GLYPH.forEach(d => ctx.stroke(new Path2D(d)));
+    ctx.restore();
+
+    return canvas.toDataURL('image/png');
+  }
+
+  function setupHomeScreenIcon() {
+    try {
+      const icon512 = pillIconPng(512);
+      const icon192 = pillIconPng(192);
+      const icon180 = pillIconPng(180);
+      const shortName = lang === 'ar' ? 'أدوية' : 'Meds';
+
+      const manifest = {
+        name: 'Meds Manager · نظام إدارة الأدوية', short_name: shortName,
+        start_url: './', scope: './', display: 'standalone',
+        background_color: '#f2f5f7', theme_color: '#2b3a8f',
+        icons: [
+          { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+        ]
+      };
+
+      const setLink = (rel, href, type) => {
+        let el = document.head.querySelector(`link[rel="${rel}"]`);
+        if (!el) { el = document.createElement('link'); el.rel = rel; document.head.appendChild(el); }
+        el.href = href;
+        if (type) el.type = type;
+      };
+      const setMeta = (name, content) => {
+        let el = document.head.querySelector(`meta[name="${name}"]`);
+        if (!el) { el = document.createElement('meta'); el.name = name; document.head.appendChild(el); }
+        el.content = content;
+      };
+
+      setLink('manifest', 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifest)));
+      setLink('icon', icon192, 'image/png');
+      setLink('apple-touch-icon', icon180);
+      setMeta('apple-mobile-web-app-title', shortName);
+      setMeta('apple-mobile-web-app-capable', 'yes');
+      setMeta('mobile-web-app-capable', 'yes');
+    } catch { /* no canvas/Path2D support: the page still works, just without a custom icon */ }
+  }
+
+  function updateDate() {
+    $('#current-date').textContent = new Date().toLocaleDateString(
+      lang === 'ar' ? 'ar-IQ' : 'en-US',
+      { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  function updateFormTitle() {
+    $('#form-title').textContent = editingId === null ? t('add_title') : t('edit_title');
+  }
+
+  function applyLanguage() {
+    const html = document.documentElement;
+    html.lang = lang;
+    html.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.title = lang === 'ar' ? 'نظام إدارة الأدوية | Meds Manager' : 'Meds Manager | نظام إدارة الأدوية';
+
+    $$('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+    $$('[data-i18n-placeholder]').forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+    $('#lang-btn').textContent = lang === 'ar' ? 'English' : 'عربي';
+
+    $('#unit-list').innerHTML = UNITS[lang].map(u => `<option value="${esc(u)}"></option>`).join('');
+    updateFormTitle();
+    updateDate();
+    setupHomeScreenIcon();
+    lastDailyHtml = '';
+    renderAll();
+  }
+
+  /* ============================================================
+     Actions
+     ============================================================ */
+  function switchTab(name) {
+    $$('.panel').forEach(p => { p.hidden = p.id !== `panel-${name}`; });
+    $$('.tab').forEach(b => {
+      if (b.dataset.tab === name) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
+    window.scrollTo({ top: 0 });
+  }
+
+  const form = $('#med-form');
+
+  function resetForm() {
+    form.reset();
+    editingId = null;
+    $('#btn-cancel-edit').hidden = true;
+    updateFormTitle();
+  }
+
+  function startEdit(id) {
+    const med = findMed(id);
+    if (!med) return;
+    switchTab('manage');
+    editingId = med.id;
+    $('#med-name').value = med.name;
+    $('#med-generic').value = med.generic;
+    $('#med-strength').value = med.strength;
+    $('#med-dose-amount').value = med.doseAmount;
+    $('#med-dose-unit').value = med.doseUnit;
+    $('#med-pack-qty').value = med.packQty || '';
+    $('#med-manufacturer').value = med.manufacturer;
+    $('#med-directions').value = med.directions;
+    $('#med-type').value = med.type;
+    $$('input[name="time"]', form).forEach(i => { i.checked = med.times.includes(i.value); });
+    $('#btn-cancel-edit').hidden = false;
+    updateFormTitle();
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('#med-name').focus({ preventScroll: true });
+  }
+
+  function saveMedication() {
+    const name = $('#med-name').value.trim();
+    const doseAmount = qtyOf($('#med-dose-amount').value);
+    const times = TIMES.filter(x => $(`input[name="time"][value="${x}"]`, form).checked);
+
+    if (!name || !doseAmount || !times.length) {
+      toast(t('err_required'), 'error');
+      (!name ? $('#med-name') : !doseAmount ? $('#med-dose-amount') : $('input[name="time"]', form)).focus();
+      return;
+    }
+
+    const fields = {
+      name, doseAmount, times,
+      generic: $('#med-generic').value.trim(),
+      strength: $('#med-strength').value.trim(),
+      doseUnit: $('#med-dose-unit').value.trim(),
+      packQty: qtyOf($('#med-pack-qty').value),
+      manufacturer: $('#med-manufacturer').value.trim(),
+      directions: $('#med-directions').value.trim(),
+      type: $('#med-type').value === 'supplement' ? 'supplement' : 'essential'
+    };
+
+    const med = editingId !== null ? findMed(editingId) : null;
+    if (med) {
+      const hadNoPack = med.packQty === 0;
+      // If a time slot was removed, drop today's checkmark for it and give the deducted amount back to stock
+      med.times.filter(x => !times.includes(x)).forEach(x => {
+        const key = `${med.id}_${x}`;
+        if (dailyState.done[key]) {
+          delete dailyState.done[key];
+          med.stock = r3(med.stock + deductedAmount(dailyState.deducted[key]));
+          delete dailyState.deducted[key];
+        }
+      });
+      Object.assign(med, fields);
+      // First time a package quantity is set on an empty drug: start with one pack
+      if (hadNoPack && med.stock === 0 && med.packQty > 0) med.stock = med.packQty;
+    } else {
+      // New drug: the package quantity is the baseline stock (one pack)
+      medications.push({ id: nextId(), ...fields, stock: fields.packQty });
+    }
+
+    resetForm();
+    persist();
+    evaluateStock();
+    renderAll();
+    toast(t('toast_saved'), 'info');
+  }
+
+  async function deleteMed(id) {
+    const med = findMed(id);
+    if (!med) return;
+    const ok = await confirmDialog(t('alert_delete', { name: med.name }), { danger: true, okLabel: t('btn_delete') });
+    if (!ok) return;
+
+    medications = medications.filter(m => m !== med);
+    [dailyState.done, dailyState.deducted].forEach(map =>
+      Object.keys(map).forEach(k => { if (k.startsWith(`${med.id}_`)) delete map[k]; }));
+    delete notified[med.id];
+    if (editingId !== null && String(editingId) === String(med.id)) resetForm();
+
+    persist();
+    renderAll();
+    toast(t('toast_deleted'));
+  }
+
+  /**
+   * Logging a dose deducts the dosage form quantity from stock.
+   * Over a full day that is: frequency (doses per day) x dosage form quantity.
+   * Example: 1 tablet, 2 times a day -> 2 x 1 = 2 tablets per day.
+   */
+  function toggleDose(id, time, checked) {
+    const med = findMed(id);
+    if (!med) return;
+    ensureToday();
+
+    const key = `${med.id}_${time}`;
+    if (checked && !dailyState.done[key]) {
+      dailyState.done[key] = true;
+      const take = Math.min(med.stock, med.doseAmount);   // stock never goes below zero
+      if (take > 0) { med.stock = r3(med.stock - take); dailyState.deducted[key] = take; }
+    } else if (!checked && dailyState.done[key]) {
+      delete dailyState.done[key];
+      med.stock = r3(med.stock + deductedAmount(dailyState.deducted[key]));   // give back exactly what was deducted
+      delete dailyState.deducted[key];
+    }
+    persist();
+    evaluateStock();
+    renderAll();
+  }
+
+  function setStock(id, value) {
+    const med = findMed(id);
+    if (!med) return;
+    med.stock = qtyOf(value);
+    persist();
+    evaluateStock();
+    renderAll();
+  }
+
+  /** Adds one pack (the package quantity from registration) on top of whatever is left. */
+  function addPack(id) {
+    const med = findMed(id);
+    if (!med || med.packQty <= 0) return;
+    med.stock = r3(Math.min(1e6, med.stock + med.packQty));
+    persist();
+    evaluateStock();
+    renderAll();
+    toast(t('toast_pack_added', { qty: `${fmt(med.packQty)} ${med.doseUnit}`.trim() }));
+  }
+
+  async function resetDay() {
+    if (!(await confirmDialog(t('alert_reset')))) return;
+    dailyState = { date: todayKey(), done: {}, deducted: {} };
+    persist();
+    renderAll();
+    toast(t('toast_reset'));
+  }
+
+  function backupPayload() {
+    return { app: 'meds-manager', version: 4, exportedAt: new Date().toISOString(), medications };
+  }
+  function backupFilename() { return `meds-backup-${todayKey()}.json`; }
+
+  /** UTF-8-safe base64 encoding (plain btoa mangles the Arabic text in drug names). */
+  function toBase64(str) { return btoa(unescape(encodeURIComponent(str))); }
+
+  /**
+   * Hands the backup to the companion Android wrapper's native bridge, if present (see
+   * ShareBridge.kt in the meds-manager-android project) — this is what actually gets a real
+   * file onto Google Drive or anywhere else in the Android app, where a plain browser
+   * download doesn't work the same way. Tries a proper native "Save As" dialog first (lists
+   * Drive and any other storage as a destination, same as Import's picker); if that bridge
+   * method isn't available (an older build of the wrapper), falls back to the share sheet
+   * instead. Returns true if either handled things, so the caller skips the web fallback.
+   */
+  function tryNativeExport(filename, json) {
+    const nativeShare = window.AndroidShare;
+    if (!nativeShare) return false;
+    const base64 = toBase64(json);
+    try {
+      if (typeof nativeShare.saveFile === 'function') { nativeShare.saveFile(filename, 'application/json', base64); return true; }
+      if (typeof nativeShare.shareFile === 'function') { nativeShare.shareFile(filename, 'application/json', base64); return true; }
+    } catch { /* fall through to the web download below */ }
+    return false;
+  }
+
+  async function exportData() {
+    const json = JSON.stringify(backupPayload(), null, 2);
+    const filename = backupFilename();
+
+    if (tryNativeExport(filename, json)) { toast(t('toast_exported')); return; }
+
+    // Plain browser (no Android wrapper around this page): the Web Share API reaches the same
+    // OS share sheet a native app gets — Drive, email, whatever's installed — without needing
+    // any wrapper at all. Only a silent local download is left once this isn't available too.
+    let file = null;
+    try { file = new File([json], filename, { type: 'application/json' }); } catch { /* File ctor unsupported */ }
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        toast(t('toast_exported'));
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return; // cancelled the share sheet, not an error
+        // otherwise fall through to the plain download below
+      }
+    }
+
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast(t('toast_exported'));
+  }
+
+  /**
+   * Prints just the trade name, generic name, strength and manufacturer details of every
+   * registered drug, using the browser's own print dialog so the person can save it as a PDF
+   * (no third-party library, works offline). See #print-area and the @media print rules above.
+   */
+  function exportDrugListPdf() {
+    if (!medications.length) return;
+
+    $('#pdf-title').textContent = t('pdf_list_title');
+    $('#pdf-date').textContent = new Date().toLocaleDateString(
+      lang === 'ar' ? 'ar-IQ' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    $('#pdf-table-head').innerHTML = `<tr>
+      <th>${t('lbl_name')}</th><th>${t('lbl_generic')}</th><th>${t('lbl_strength')}</th><th>${t('pdf_col_frequency')}</th><th>${t('lbl_manufacturer')}</th>
+    </tr>`;
+    $('#pdf-table-body').innerHTML = medications.map(m => `<tr>
+      <td>${esc(m.name)}</td><td>${esc(m.generic) || '—'}</td><td>${esc(m.strength) || '—'}</td><td dir="ltr">${fmt(m.doseAmount)}*${frequencyOf(m)}</td><td>${esc(m.manufacturer) || '—'}</td>
+    </tr>`).join('');
+
+    const prevTitle = document.title;
+    document.title = `${t('pdf_list_title')} ${todayKey()}`; // used by some browsers as the default "Save as PDF" filename
+    const restore = () => { document.title = prevTitle; window.removeEventListener('afterprint', restore); };
+    window.addEventListener('afterprint', restore);
+
+    // Native Android wrapper: a bare WebView doesn't implement window.print() at all — this
+    // bridge (see PrintBridge.kt) drives Android's own print dialog instead, which still
+    // offers "Save as PDF" as a destination, so the end result is the same either way.
+    const nativePrint = window.AndroidPrint;
+    if (nativePrint && typeof nativePrint.printPage === 'function') {
+      try { nativePrint.printPage(); return; } catch { /* fall through to the web API below */ }
+    }
+    window.print();
+  }
+
+  async function importData(file) {
+    try {
+      const data = JSON.parse(await file.text());
+      const list = Array.isArray(data) ? data : data && data.medications;
+      const meds = Array.isArray(list) ? sanitizeList(list) : [];
+      if (!meds.length) throw new Error('empty');
+
+      const ok = await confirmDialog(t('confirm_import', { count: meds.length }), { danger: true });
+      if (!ok) return;
+
+      medications = meds;
+      notified = {};
+      dailyState = { date: todayKey(), done: {}, deducted: {} };
+      resetForm();
+      persist();
+      evaluateStock();
+      renderAll();
+      toast(t('toast_imported', { count: meds.length }));
+    } catch {
+      toast(t('toast_import_error'), 'error', 5000);
+    }
+  }
+
+  function requestNotifications() {
+    if (!('Notification' in window)) return;
+    Promise.resolve(Notification.requestPermission()).then(perm => {
+      updateNotifButton();
+      if (perm === 'granted') ensureServiceWorker(); // register early so the first alert isn't delayed
+    }, updateNotifButton);
+  }
+
+  /* ============================================================
+     Events (delegated, no inline handlers)
+     ============================================================ */
+  $$('.tab').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+  $('#lang-btn').addEventListener('click', () => {
+    lang = lang === 'ar' ? 'en' : 'ar';
+    store.set(KEYS.lang, lang);
+    applyLanguage();
+  });
+
+  form.addEventListener('submit', e => { e.preventDefault(); saveMedication(); });
+
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const { action, id } = btn.dataset;
+    switch (action) {
+      case 'edit': startEdit(id); break;
+      case 'delete': deleteMed(id); break;
+      case 'add-pack': addPack(id); break;
+      case 'preset-amount': {
+        const input = $('#med-dose-amount');
+        input.value = btn.dataset.value;
+        input.focus();
+        break;
+      }
+      case 'reset-day': resetDay(); break;
+      case 'cancel-edit': resetForm(); break;
+      case 'goto-manage': switchTab('manage'); $('#med-name').focus(); break;
+      case 'export': exportData(); break;
+      case 'export-pdf': exportDrugListPdf(); break;
+      case 'import': $('#import-file').click(); break;
+      case 'notif': requestNotifications(); break;
+    }
+  });
+
+  document.addEventListener('change', e => {
+    const el = e.target;
+    const action = el.dataset && el.dataset.action;
+    if (action === 'toggle') toggleDose(el.dataset.id, el.dataset.time, el.checked);
+    else if (action === 'stock') setStock(el.dataset.id, el.value);
+  });
+
+  $('#import-file').addEventListener('change', e => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (file) importData(file);
+  });
+
+  // Keep "late" states and the date fresh, and roll over to a new day automatically
+  setInterval(() => { updateDate(); renderDaily(); }, 60000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { updateDate(); renderAll(); }
+  });
+
+  /* ============================================================
+     Init
+     ============================================================ */
+  $$('[data-icon]').forEach(el => { el.innerHTML = icon(el.dataset.icon); });
+  applyLanguage();
+  evaluateStock();
+  persist();
+})();
+</script>
+</body>
+</html>
